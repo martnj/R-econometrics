@@ -1,6 +1,7 @@
 
 
 # . -----------------------------------------------------------------------
+
 # Introduction to R
 
 # Creating vectors (data structure which contains objects of the same mode)
@@ -127,11 +128,9 @@ chartSeries(rtn,theme="white")
 
 
 
+# . -----------------------------------------------------------------------
 
-#------------------------------------------------------------------------
-
-
-### Histogram: S&P 500 return data ###
+# Histogram: S&P 500 return data 
 
 #install.packages("Ecdat")    # Download package Ecdat
 data(package="Ecdat")        # Load data from it (SP500),
@@ -146,23 +145,25 @@ plot(density(SP500$r500))
 ?density
 
 #install.packages("fBasics")
-#library(fBasics) 
+library(fBasics) 
 basicStats(SP500)
 
 
 #------------------------------------------------------------------------
 
-### Test for normality: S&P 500 data ###
+# Test for normality: S&P 500 data
 
 normalTest(SP500$r500,method='jb')   # JB-test
+
 # STATISTIC:
 #   X-squared: 648508.6002
 # P VALUE:
 #   Asymptotic p Value: < 2.2e-16    # Reject normality
+
 hist(SP500$r500,nclass=30)           # Histogram
 d1 = density(SP500$r500)             # Obtain density estimate
 range(SP500$r500)                    # Range of SP500 returns
-x = seq(-.25,.1,by=.001)             # Create a sequence of x with increment 0.001.
+x = seq(-.25,.1,by=.001)  
 y1 = dnorm(x,mean(SP500$r500),stdev(SP500$r500))
 plot(d1$x,d1$y,xlab="return",ylab="density",type="l")
 lines(x,y1,lty=2)
@@ -173,7 +174,7 @@ lines(x,y1,lty=2)
 
 # Create sample data 
 set.seed(3)
-x <- rcauchy(100)     # Undefined moments
+x <- rcauchy(100)     # Undefined moments!
 
 # Standard normal fit?
 qqnorm(x) 
@@ -188,6 +189,7 @@ qqline(y)
 
 # Mishkin tb3 - three-month Bonds
 # T-bill rate (in percent, annual rate)
+
 data(Mishkin ,package="Ecdat")
 plot(Mishkin[,4])
 x <- diff(Mishkin[,4])
