@@ -117,6 +117,8 @@ names(AAPL)
 head(AAPL)                       # See the first 6 rows of the data
 tail(AAPL)                       # See the last 6 rows of the data
 
+#write.csv(as.data.frame(AAPL),file='apple_data.csv')
+
 # Financial chart from 'quantmod'
 chartSeries(AAPL,theme="white") 
 chartSeries(AAPL,type=c("auto","candlesticks"),subset="last 2 months")
@@ -187,24 +189,55 @@ qqline(y)
 
 #------------------------------------------------------------------------
 
+# Linear regression
+
+spx = SP500$r500
+y = spx[-(1:2)]
+X = cbind(rep(1,length(spx)-2),spx[-c(1,length(spx))],
+          spx[-c(length(spx)-1,length(spx))] )
+
+install.packages("scatterplot3d")
+library(scatterplot3d)
+pr = par()
+scatterplot3d(X[,2],X[,3],y)
+par(pr)
+
+m1 <- lm(y~X-1)
+summary(m1)
+
+X = cbind(rep(1,length(spx)-2),spx[-c(1,length(spx))] )
+plot(X[,2],y)
+m2 <- lm(y~X-1)
+summary(m2)
+
+beta_hat = solve(t(X)%*%X,t(X)%*%y)
+sig2_eps = sum((y - X%*%beta_hat)^2)/(nrow(X)-3)
+beta_cov = inv(t(X)%*%X)*sig2_eps
+for(i in 1:1000){
+  beta_rnd = beta_hat + (chol(beta_cov))%*%rnorm(length(beta_hat))
+  abline(beta_rnd,col=grey(0.7))
+}
+
+
+# . -----------------------------------------------------------------------
+
 # Mishkin tb3 - three-month Bonds
 # T-bill rate (in percent, annual rate)
 
 data(Mishkin ,package="Ecdat")
 plot(Mishkin[,4])
-x <- diff(Mishkin[,4])
-plot(x)
 
 y <- diff(log(Mishkin[,4]))
-plot(y)
+plot(y,ylab='log-return')
 abline(h=0,col="grey")
 
 
-#------------------------------------------------------------------------
 
-### S$P 500 ETF - ACF ###
+# . -----------------------------------------------------------------------
 
-getSymbols("SPY",src="google")    
+# S$P 500 - ACF
+
+getSymbols("SPY",src="yahoo")    
 head(SPY) 
 plot(SPY$SPY.Close)
 SPY.rtn = diff(log(SPY$SPY.Close))
@@ -212,9 +245,10 @@ plot(SPY.rtn)
 acf(SPY.rtn[-1])     # plot autocorrelation function
 acf(SPY.rtn[-1]^2)   # x[-1] : skip the first element
      
-#------------------------------------------------------------------------
 
-### Stationarity CO2 at Manua Loa ###
+# . -----------------------------------------------------------------------
+
+# Stationarity CO2 at Manua Loa
 
 data(co2,package="datasets")
 plot(co2)
@@ -225,16 +259,14 @@ plot(co2.stl)
 
 # Reminder:
 plot(co2.stl$time.series[,"remainder"],ylab="CO2 data, remainder")
-
-plot(diff(co2,differences = 2))
+plot(diff(co2,differences = 3))
 
 #------------------------------------------------------------------------
 
-### White noise ###
+# White noise
 
 WN <- rnorm(1024,0,1)
 ts.plot(WN)
-acf(WN,40,"covariance")
 acf(WN,40,"correlation")
 
 # check for normality
@@ -243,7 +275,7 @@ qqline(WN)
 
 #------------------------------------------------------------------------
 
-### Random Walk ###
+# Random Walk
 
 WN <- rnorm(1024,0,1)
 RW <- cumsum(WN)
@@ -253,60 +285,62 @@ acf(diff(RW),40,"correlation")
 
 #------------------------------------------------------------------------
 
-### ARIMA process ###
+# AR(IMA) process
 
 # order = c(p,d,q) where p is AR(p), d differencing, q is MA(q)
 x = arima.sim(list(order=c(1,0,0),ar=0.9),n=1000)
 plot(x)
 acf(x,40,type="correlation")
-lines(0.9^(0:40),lty=2)
+lines(0.9^(0:40),lty=2,lwd=3)
 
 #------------------------------------------------------------------------
 
-### PACF for AR models ###
+# PACF for AR models
 
 # US Gross National Product (GNP)
+
 data = read.table("Data/q-gnp4710.txt",header=T)
 head(data)
 tail(data)
 gnp = data$VALUE
 gnp.r = diff(log(gnp))
-tVec = seq(1947,2010,length.out=nrow(data))    # create the time index
+tVec = seq(1947,2010,length.out=nrow(data))    # create time-index
 plot(tVec,gnp,xlab='year',ylab='GNP',type="l")
 plot(tVec[-1],gnp.r,type="l",xlab="year",ylab="growth"); abline(h=0)
 acf(gnp.r,lag=12)
 pacf(gnp.r,lag=12,ylim=c(-1,1)) 
 
-# PACF criteria
+# PACF criteria for AR(p)
 m1 = arima(gnp.r,order=c(3,0,0)) # fit AR(3) model
 m1
 
-### AIC criteria ###
+# AIC criteria
 
-?ar
+?ar                           # also fits order 'p'
 m2 = ar(gnp.r,method='mle')
 m2$order                      # Find the identified order
 names(m2)
 print(m2$aic,digits=3)
 plot(c(0:12),m2$aic,type='h',xlab='order',ylab='AIC')
-lines(0:12,m2$aic,lty=2)
+lines(0:12,m2$aic,lty=1)
 
 
 #------------------------------------------------------------------------
 
-### Box-Ljung test ###
+# Box-Ljung test
 
 vw = read.table("Data/m-ibm3dx2608.txt",header=T)[,3]
-m3 = arima(vw-mean(vw),order=c(3,0,0))
+plot(vw,type='l')
+m3 = arima(vw-mean(vw),order=c(3,0,0))   # fit AR(3)-model
 m3
+
 names(m3)
-sqrt(m3$sigma2)              # Compute standard error of residuals
 Box.test(m3$residuals,lag=12,type='Ljung')
-pv = 1 - pchisq(16.352,9)    # Compute p-value using 9 dof (lag - nbr params)
-pv
+pv = 1 - pchisq(16.352,9)    # p-value with 9 dof = #lags - #params
+pv                           # Small p-value => reject H0: white noise
+
 m4 = arima(vw-mean(vw),order=c(3,0,0),fixed=c(NA,0,NA,NA))
 m4
-sqrt(m4$sigma2)              # Compute residual standard error
 Box.test(m4$residuals,lag=12,type='Ljung')
 pv = 1 - pchisq(16.828,10)   # Compute p-value using 10 dof (lag - nbr params)
 pv
@@ -314,38 +348,34 @@ pv
 
 #------------------------------------------------------------------------
 
-### Regression model with time series errrors ###
+# Regression model with time-series errrors
 
-# Treasury rates, weekly data
+# 1-year / 3-year treasury rates, weekly data
 r1 = read.table("Data/w-gs1yr.txt",header=T)[,4]
 r3 = read.table("Data/w-gs3yr.txt",header=T)[,4]
 tVec = c(1:2467)/52+1962          
-par(mfcol=c(2,1))
-plot(tVec,r1,xlab="",ylab="1-year rate",type="l")
-plot(tVec,r3,xlab="",ylab="3-year rate",type="l")
-par(mfcol=c(1,1))
+plot(tVec,r1,xlab="",ylab="rate [%]",type="l")
+lines(tVec,r3,lty=1,col='red')
+legend(x='topleft',legend=c('1year','3year'),lty=c(1,1),col=c('black','red'))
 plot(r1,r3,type="p")
 
 # Linear regression
 lm1 = lm(r3~r1)
 summary(lm1)
-plot(lm1$residuals,type='l'); abline(h=0)
+plot(tVec,lm1$residuals,type='l'); abline(h=0)
 acf(lm1$residuals,lag=36)
 
-#------------------------------------------------------------------------
 
-### Look at first differences
-
+# Look at first differences
 c1 = diff(r1)
 c3 = diff(r3)
-par(mfcol=c(2,1))
-plot(tVec[-1],c1,xlab="",ylab="1-year, difference",type="l")
-plot(tVec[-1],c3,xlab="",ylab="3-year, difference",type="l")
-par(mfcol=c(1,1))
+plot(tVec[-1],c1,xlab="",ylab="diff(rate)",type="l")
+lines(tVec[-1],c3,lty=1,col='red')
+legend(x='topleft',legend=c('1year','3year'),lty=c(1,1),col=c('black','red'))
 plot(c1,c3); abline(0,1)
 
 # Linear regression
-lm2 = lm(c3~-1+c1)     # '-1' for no intercept
+lm2 = lm(c3~c1)     # '-1' for no intercept
 summary(lm2)
 plot(lm2$residuals,type="l")
 acf(lm2$residuals,lag=36)
@@ -354,23 +384,22 @@ pacf(lm2$residuals,lag=36,ylim=c(-1,1))
 
 #------------------------------------------------------------------------
 
-### MA(1) for regression residuals ###
+# MA(1) / AR(p) for regression residuals
 
 r = lm2$residuals
-m = arima(r,order=c(0,0,1),include.mean=F)
-m
+m.ma = arima(r,order=c(0,0,1),include.mean=F)
 
-plot(m$residuals); abline(h=0)
-acf(m$residuals)
-pacf(m$residuals,ylim=c(-1,1))
-Box.test(m$residuals,lag=10,type='Ljung')
-pv = 1 - pchisq(50.344,9)    # Compute p-value using dof = lag-#params
-pv
-qqnorm(m$residuals) 
-qqline(m$residuals)
+plot(m.ma$residuals); abline(h=0)
+acf(m.ma$residuals)
+pacf(m.ma$residuals,ylim=c(-1,1))
+Box.test(m.ma$residuals,lag=10,type='Ljung')
+1 - pchisq(50.344,9)   
 
-arx = ar(r)
-acf(arx$resid[-(1:21)])
+m.ar = ar(r); print(m.ar)
+acf(m.ar$resid[-(1:21)])
+pacf(m.ar$resid[-(1:21)],ylim=c(-1,1))
+Box.test(m.ar$resid[-(1:21)],lag=23,type='Ljung')
+1 - pchisq(1.7823,1)   
 
 
 
@@ -380,13 +409,16 @@ acf(arx$resid[-(1:21)])
 # Non-linear time series
 #------------------------------------------------------------------------
 
-### Non-linearity ###
+# Non-linearity: S&P 500
 
 ts.plot(SP500); abline(h=0)
 acf(SP500)
-qqnorm(SP500$r500)
-qqline(SP500$r500)
+qqnorm(SP500$r500); qqline(SP500$r500)
+
+# Non-normal, zero-correlation no guarantee for independence!
 acf(SP500$r500^2)
+
+# Treasury-bill rates
 data(Tbrate,package="Ecdat")
 Tbill <- Tbrate[,1]
 d.Tbill <- diff(Tbill)
@@ -400,43 +432,35 @@ acf(d.Tbill^2)
 # IBM data:
 da = read.table("data/m-intcsp7309.txt",header=T)
 head(da)
-intc = log(da$intc+1)
-rtn = ts(intc,frequency=12,start=c(1973,1))
-plot(rtn,type="l",xlab="year",ylab="log-rtn") # time plot
-abline(h=0)
-t.test(intc) # testing the mean of returns
-Box.test(intc,lag=12,type="Ljung")
-# do not reject H0: rho(h)=0
+X = log(da$intc+1)
+rtn = ts(X,frequency=12,start=c(1973,1))
+plot(rtn,type="l",xlab="year",ylab="IBM log-return"); abline(h=0)
+Box.test(X,lag=12,type="Ljung")
+# -> can not reject H0: rho(h)=0, h>0
 
-par(mfcol=c(2,1))
-acf(intc,lag=24) # ACF plots
-acf(abs(intc),lag=24)
-par(mfcol=c(1,1))
-Box.test(abs(intc),lag=12,type="Ljung")
-# Reject H0
+acf(X,lag=24) 
+acf(abs(X),lag=24)
+Box.test(abs(X),lag=12,type="Ljung")
+# -> reject H0: rho(h)=0, h>0
 
 #------------------------------------------------------------------------
 
-### ARCH fitting ###
-
-#pacf(intc^2,lag=24,ylim=c(-1,1))
+# ARCH(p)
 
 # install fGarch from Rmetrics
-library(fGarch)                              # Load package
-m1 = garchFit(~garch(3,0),data=intc,trace=F) # Fit an ARCH(3) model
+install.packages('fGarch')
+library(fGarch)                             
+m1 = garchFit(~garch(3,0),data=X,trace=T) # Fit an ARCH(3) model
 ?garchFit
 summary(m1)
-m2 = garchFit(~garch(1,0),data=intc,trace=F)
+m2 = garchFit(~garch(1,0),data=X,trace=F)
 summary(m2)
-resi = residuals(m2,standardize=T)
-tdx = c(1:444)/12+1973
-par(mfcol=c(1,1))
-plot(tdx,resi,xlab="year",ylab="stand-resi",type="l")
-acf(resi,lag=20)
-acf(resi^2,lag=20)
 plot(m2)
 
-
+pacf(X^2,lag=24,ylim=c(-1,1))
+m3 = garchFit(~garch(12,0),data=X,trace=F)
+summary(m3)
+plot(m3)
 
 #------------------------------------------------------------------------
 # Trading with R
@@ -444,22 +468,20 @@ plot(m2)
 
 
 
-### Simple trading strategy ###
+#Simple trading strategy
 
 #install.packages("quantmod")
 #install.packages("PerformanceAnalytics")
 library(PerformanceAnalytics)
 library(TTR)
 
-# Step 1: Get the data from Yahoo
-getSymbols("^GSPC")       
-GSPC = na.omit(GSPC)      # GSPC contains 'NA' -> omit these
-names(GSPC)
-chartSeries(Cl(GSPC),theme = chartTheme("white"))
-
+# Step 1: Get S&P 500 data from Yahoo
+getSymbols("^GSPC")     # load(file='GSPC_for_trading.Rdata',verbose=T)
+tail(GSPC)
+chartSeries(GSPC,theme = chartTheme("white"))
 
 # Step 2: Create indicator
-# Calculate DVI (momentum indicator) (TTR library)
+# Calculate DVI (momentum indicator) 
 dvi <- DVI(Cl(GSPC))      # 'Cl' gives closing price      
 ?DVI
 plot(dvi[,3])
@@ -470,7 +492,7 @@ plot(dvi[,3])
 sig <- Lag(ifelse(dvi[,3] < 0.5, 1, -1),k=1)
 
 # Step 4: Equity curve
-# calculate signal-based returns
+# Calculate signal-based returns
 ret <- ROC(Cl(GSPC))*sig
 
 # Step 5: Evaluate strategy performance
@@ -499,18 +521,17 @@ charts.PerformanceSummary(ret)
 set.seed(10)
 sig = runif(length(Cl(GSPC))) < 0.5
 sig = 2*sig-1
-ret <- ret["2009-06-02/2010-09-07"]
 ret <- ROC(Cl(GSPC))*sig
+ret <- ret["2009-06-02/2010-09-07"]
 charts.PerformanceSummary(ret)
 
 
 
-### Second example with RSI ###
+# Second example with RSI
 
-# Pull S&P500 index data from Yahoo! Finance
+# S&P500 index data from Yahoo! Finance
 getSymbols("^GSPC", from="2000-01-01", to="2008-12-07")
-chartSeries(Cl(GSPC),theme = chartTheme("white"))
-GSPC = na.omit(GSPC)   
+chartSeries(GSPC,theme = chartTheme("white"))
 
 # Calculate the RSI indicator
 rsi <- RSI(Cl(GSPC),2)
