@@ -13,6 +13,7 @@ length(x)
 numeric(5)              # empty numeric of length 5 (default)
 
 # Check if two objects are the same
+y <- 1:5
 x == y                  # component-wise 'equal-to' operator
 identical(x,y)          # identical as objects? why not?
 class(x)                # => x is a *numeric* vector
@@ -136,7 +137,7 @@ chartSeries(rtn,theme="white")
 
 #install.packages("Ecdat")    # Download package Ecdat
 data(package="Ecdat")        # Load data from it (SP500),
-data(SP500,package="Ecdat")
+data(SP500, package="Ecdat")
 
 class(SP500)
 names(SP500)                 
@@ -148,6 +149,7 @@ plot(density(SP500$r500))
 
 #install.packages("fBasics")
 library(fBasics) 
+?fBasics
 basicStats(SP500)
 
 
@@ -260,6 +262,9 @@ plot(co2.stl)
 # Reminder:
 plot(co2.stl$time.series[,"remainder"],ylab="CO2 data, remainder")
 plot(diff(co2,differences = 3))
+
+qqnorm(co2.stl$time.series[,"remainder"])
+qqline(co2.stl$time.series[,"remainder"])
 
 #------------------------------------------------------------------------
 
@@ -439,7 +444,7 @@ Box.test(X,lag=12,type="Ljung")
 # -> can not reject H0: rho(h)=0, h>0
 
 acf(X,lag=24) 
-acf(abs(X),lag=24)
+acf(abs(X)^2,lag=24)
 Box.test(abs(X),lag=12,type="Ljung")
 # -> reject H0: rho(h)=0, h>0
 
